@@ -1,0 +1,153 @@
+/* Кнопка чату */
+.ai-chat-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: #007bff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9999;
+    font-size: 24px;
+    transition: all 0.3s ease;
+}
+
+.ai-chat-button:hover {
+    background: #0056b3;
+    transform: scale(1.1);
+}
+
+/* Вікно чату */
+.ai-chat-window {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    height: 500px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Заголовок чату */
+.ai-chat-header {
+    background: #007bff;
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    flex-shrink: 0; /* ✅ ДОДАНО: Заголовок не стискається */
+}
+
+.ai-chat-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 25px;
+    height: 25px;
+}
+
+/* ✅ ВИПРАВЛЕНО: Область повідомлень з правильною прокруткою */
+.ai-chat-messages {
+    flex: 1; /* Займає всю доступну висоту */
+    padding: 15px;
+    overflow-y: auto; /* Вертикальна прокрутка */
+    overflow-x: hidden; /* Горизонтальна прокрутка відключена */
+    background: #f8f9fa;
+    min-height: 0; /* ✅ ДОДАНО: Дозволяє flex контейнеру стискатися */
+    max-height: 380px; /* ✅ ДОДАНО: Максимальна висота */
+}
+
+/* ✅ ДОДАНО: Стилі для прокрутки (для кращого вигляду) */
+.ai-chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Повідомлення */
+.ai-chat-message {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    max-width: 80%;
+    word-wrap: break-word;
+    line-height: 1.4; /* ✅ ДОДАНО: Кращий міжрядковий інтервал */
+}
+
+.ai-chat-message.user {
+    background: #007bff;
+    color: white;
+    margin-left: auto;
+    text-align: right;
+}
+
+.ai-chat-message.bot {
+    background: white;
+    border: 1px solid #dee2e6;
+    margin-right: auto;
+}
+
+/* ✅ ВИПРАВЛЕНО: Область введення залишається внизу */
+.ai-chat-input-area {
+    padding: 15px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0; /* ✅ ДОДАНО: Область введення не стискається */
+    background: white; /* ✅ ДОДАНО: Білий фон */
+}
+
+.ai-chat-input-area input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    outline: none;
+    font-size: 14px; /* ✅ ДОДАНО: Розмір шрифту */
+}
+
+.ai-chat-input-area input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25); /* ✅ ДОДАНО: Підсвічування при фокусі */
+}
+
+.ai-chat-input-area button {
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px; /* ✅ ДОДАНО: Розмір шрифту */
+}
+
+.ai-chat-input-area button:hover {
+    background: #0056b3;
+}

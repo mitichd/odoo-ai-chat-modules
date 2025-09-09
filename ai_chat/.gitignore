@@ -1,0 +1,16 @@
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# Odoo specific
+*.log
+filestore/
+sessions/
+
+# IDE files
+.vscode/
+.DS_Store
+
+# Database files
+*.db
