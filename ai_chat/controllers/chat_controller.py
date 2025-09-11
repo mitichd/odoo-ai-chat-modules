@@ -15,7 +15,12 @@ class ChatController(http.Controller):
 
         if not result['is_command']:
             return {
-                'reply': f"Ти написав: '{message}'\n\n💡 Спробуй команди:\n• /help - список команд\n• /create_task - створити завдання\n• /list_tasks - показати завдання"}
+                'reply': f"Ти написав: '{message}'\n\n"
+                         f"💡 Спробуй команди:\n"
+                         f"• /help - список команд\n"
+                         f"• /create_task - створити завдання\n"
+                         f"• /list_tasks - показати завдання"
+            }
 
         command = result['command']
         text = result['text']
@@ -30,6 +35,8 @@ class ChatController(http.Controller):
             return self._handle_help(parser)
         elif command == 'create_task':
             return self._handle_create_task(text)
+        elif command == 'change_task':
+            return self._handle_change_task(text)
         elif command == 'list_tasks':
             return self._handle_list_tasks()
         elif command in ['edit_task', 'complete_task', 'return_task', 'approve_task']:
@@ -39,7 +46,10 @@ class ChatController(http.Controller):
         elif command in ['cancel_task', 'pause_task', 'resume_task', 'comment_task']:
             return self._handle_task_management(command, text, parser)
         else:
-            return {'reply': f"❓ Невідома команда: /{command}\n\nСпробуй /help для списку команд"}
+            return {
+                'reply': f"❓ Невідома команда: /{command}\n\n"
+                         f"Спробуй /help для списку команд"
+            }
 
         # ✅ ДОДАЄМО: Окремі методи для кожної команди
 
@@ -48,23 +58,70 @@ class ChatController(http.Controller):
         help_commands = parser.get_help()
         commands_text = '\n'.join([f"• /{cmd} - {desc}" for cmd, desc in help_commands.items()])
         return {
-            'reply': f"📋 **Доступні команди:**\n\n{commands_text}\n\n💡 Для детальної інформації про команду використовуй: /команда"}
+            'reply': f"📋 **Доступні команди:**\n\n{commands_text}\n\n"
+                     f"💡 Для детальної інформації про команду використовуй: /команда"
+        }
 
     def _handle_create_task(self, text):
         """Обробка команди /create_task"""
         if text:
             # Швидке створення з назвою
             return {
-                'reply': f"🚀 **Швидке створення завдання:**\n\n📝 Назва: '{text}'\n\n⚡ Для повного створення з усіма параметрами використовуй просто /create_task\n\n(Повна форма буде реалізована на наступному кроці)"}
+                'reply': f"🚀 **Швидке створення завдання:**\n\n"
+                         f"📝 Назва: '{text}'\n\n"
+                         f"⚡ Для повного створення з усіма параметрами використовуй просто /create_task\n\n"
+                         f"(Повна форма буде реалізована на наступному кроці)"
+            }
         else:
             # Повна форма створення
             return {
-                'reply': "📝 **Створення нового завдання**\n\n🔄 Тут буде інтерактивна форма:\n• Проект\n• Назва\n• Опис\n• Виконавець\n• Дедлайн\n• Пріоритет\n• Мітки\n• Файли\n\n(Форма буде реалізована на наступному кроці)"}
+                'reply': "📝 **Створення нового завдання**\n\n"
+                         "🔄 Тут буде інтерактивна форма:\n"
+                         "• Проект\n"
+                         "• Назва\n"
+                         "• Опис\n"
+                         "• Виконавець\n"
+                         "• Дедлайн\n"
+                         "• Пріоритет\n"
+                         "• Мітки\n"
+                         "• Файли\n\n"
+                         "(Форма буде реалізована на наступному кроці)"
+            }
+
+    def _handle_change_task(self, text):
+        """Обробка команди /change_task"""
+        if text:
+            # Швидка зміна з ID завдання
+            return {
+                'reply': f"🔄 **Зміна завдання:**\n\n"
+                         f"📝 Параметри: '{text}'\n\n"
+                         f"⚡ Для повної зміни використовуй просто /change_task\n\n"
+                         f"(Повна форма буде реалізована на наступному кроці)"
+            }
+        else:
+            # Повна форма зміни
+            return {
+                'reply': "🔄 **Зміна існуючого завдання**\n\n"
+                         "🎯 Тут буде форма для зміни:\n"
+                         "• Вибір завдання для зміни\n"
+                         "• Зміна виконавця\n"
+                         "• Зміна дедлайну\n"
+                         "• Зміна пріоритету\n"
+                         "• Зміна міток\n"
+                         "• Додавання файлів\n\n"
+                         "(Форма буде реалізована разом з /create_task)"
+            }
 
     def _handle_list_tasks(self):
         """Обробка команди /list_tasks"""
         return {
-            'reply': "📋 **Список завдань:**\n\n🔍 ID | Назва | Статус | Виконавець | Дедлайн\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📌 001 | Тестове завдання | To Do | @dev1 | 2025-09-15\n📌 002 | Додати API | In Progress | @dev2 | 2025-09-20\n\n(Реальні дані будуть підключені на наступному кроці)"}
+            'reply': "📋 **Список завдань:**\n\n"
+                     "🔍 ID | Назва | Статус | Виконавець | Дедлайн\n"
+                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                     "📌 001 | Тестове завдання | To Do | @dev1 | 2025-09-15\n"
+                     "📌 002 | Додати API | In Progress | @dev2 | 2025-09-20\n\n"
+                     "(Реальні дані будуть підключені на наступному кроці)"
+        }
 
     def _handle_task_action(self, command, text, parser):
         """Обробка команд дій з завданнями"""
@@ -80,13 +137,20 @@ class ChatController(http.Controller):
         action_text = actions.get(command, f"Дія {command}")
         comment_text = f"\n💬 Коментар: '{comment}'" if comment else ""
 
-        return {'reply': f"{action_text}{comment_text}\n\n(Реальна обробка буде реалізована на наступному кроці)"}
+        return {
+            'reply': f"{action_text}{comment_text}\n\n"
+                     f"(Реальна обробка буде реалізована на наступному кроці)"
+        }
 
     def _handle_assign_task(self, text, parser):
         """Обробка команди /assign_task"""
         task_id, username, comment = parser.parse_user_mention(text)
         return {
-            'reply': f"👤 **Переназначення завдання #{task_id}**\n\n🔄 Новий виконавець: @{username}\n💬 Коментар: '{comment}'\n\n(Реальна обробка буде реалізована на наступному кроці)"}
+            'reply': f"👤 **Переназначення завдання #{task_id}**\n\
+            n🔄 Новий виконавець: @{username}\n"
+                     f"💬 Коментар: '{comment}'\n\n"
+                     f"(Реальна обробка буде реалізована на наступному кроці)"
+        }
 
     def _handle_task_management(self, command, text, parser):
         """Обробка команд управління завданнями"""
@@ -102,4 +166,7 @@ class ChatController(http.Controller):
         action_text = actions.get(command, f"Дія {command}")
         comment_text = f"\n📝 Текст: '{comment}'" if comment else ""
 
-        return {'reply': f"{action_text}{comment_text}\n\n(Реальна обробка буде реалізована на наступному кроці)"}
+        return {
+            'reply': f"{action_text}{comment_text}\n\n"
+                     f"(Реальна обробка буде реалізована на наступному кроці)"
+        }
