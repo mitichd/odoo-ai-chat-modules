@@ -47,7 +47,7 @@
     justify-content: space-between;
     align-items: center;
     font-weight: bold;
-    flex-shrink: 0; /* ✅ ДОДАНО: Заголовок не стискається */
+    flex-shrink: 0; /* Заголовок не стискається */
 }
 
 .ai-chat-close {
@@ -61,18 +61,17 @@
     height: 25px;
 }
 
-/* ✅ ВИПРАВЛЕНО: Область повідомлень з правильною прокруткою */
+/* Область повідомлень з правильною прокруткою */
 .ai-chat-messages {
-    flex: 1; /* Займає всю доступну висоту */
     padding: 15px;
     overflow-y: auto; /* Вертикальна прокрутка */
     overflow-x: hidden; /* Горизонтальна прокрутка відключена */
     background: #f8f9fa;
-    min-height: 0; /* ✅ ДОДАНО: Дозволяє flex контейнеру стискатися */
-    max-height: 380px; /* ✅ ДОДАНО: Максимальна висота */
+    min-height: 380px; /* Дозволяє flex контейнеру стискатися */
+    max-height: 380px; /* Максимальна висота */
 }
 
-/* ✅ ДОДАНО: Стилі для прокрутки (для кращого вигляду) */
+/* Стилі для прокрутки (для кращого вигляду) */
 .ai-chat-messages::-webkit-scrollbar {
     width: 8px;
 }
@@ -98,7 +97,7 @@
     border-radius: 8px;
     max-width: 80%;
     word-wrap: break-word;
-    line-height: 1.4; /* ✅ ДОДАНО: Кращий міжрядковий інтервал */
+    line-height: 1.4; /* Кращий міжрядковий інтервал */
 }
 
 .ai-chat-message.user {
@@ -114,14 +113,13 @@
     margin-right: auto;
 }
 
-/* ✅ ВИПРАВЛЕНО: Область введення залишається внизу */
+/* Область введення залишається внизу */
 .ai-chat-input-area {
     padding: 15px;
     border-top: 1px solid #dee2e6;
     display: flex;
     gap: 10px;
-    flex-shrink: 0; /* ✅ ДОДАНО: Область введення не стискається */
-    background: white; /* ✅ ДОДАНО: Білий фон */
+    background: white; /* Білий фон */
 }
 
 .ai-chat-input-area input {
@@ -130,12 +128,12 @@
     border: 1px solid #ced4da;
     border-radius: 6px;
     outline: none;
-    font-size: 14px; /* ✅ ДОДАНО: Розмір шрифту */
+    font-size: 14px; /* Розмір шрифту */
 }
 
 .ai-chat-input-area input:focus {
     border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0,123,255,0.25); /* ✅ ДОДАНО: Підсвічування при фокусі */
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25); /* Підсвічування при фокусі */
 }
 
 .ai-chat-input-area button {
@@ -145,22 +143,22 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px; /* ✅ ДОДАНО: Розмір шрифту */
+    font-size: 14px; /* Розмір шрифту */
 }
 
 .ai-chat-input-area button:hover {
     background: #0056b3;
 }
 
-/* ✅ ДОДАТИ: Стилі для AI Task форми */
-.ai-task-form {
+/* Стилі для AI Task форми */
+/*.ai-task-form {
     background: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 8px;
     padding: 20px;
     margin: 10px 0;
     max-width: 100%;
-}
+}*/
 
 .ai-task-form h3 {
     margin: 0 0 20px 0;

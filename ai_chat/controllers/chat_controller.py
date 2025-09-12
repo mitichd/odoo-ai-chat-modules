@@ -25,7 +25,7 @@ class ChatController(http.Controller):
         command = result['command']
         text = result['text']
 
-        # ✅ ДОДАЄМО: Валідація команди
+        # Валідація команди
         is_valid, validation_message = parser.validate_command(command, text)
         if not is_valid:
             return {'reply': f"❌ {validation_message}"}
@@ -51,7 +51,7 @@ class ChatController(http.Controller):
                          f"Спробуй /help для списку команд"
             }
 
-        # ✅ ДОДАЄМО: Окремі методи для кожної команди
+        # Окремі методи для кожної команди
 
     def _handle_help(self, parser):
         """Обробка команди /help"""
@@ -127,8 +127,8 @@ class ChatController(http.Controller):
                     </div>
 
                     <div class="form-buttons">
-                        <button type="submit" class="btn-primary">✅ Створити завдання</button>
-                        <button type="button" class="btn-cancel" onclick="cancelTaskForm()">❌ Скасувати</button>
+                        <button type="submit" class="btn-primary">Створити</button>
+                        <button type="button" class="btn-cancel" onclick="cancelTaskForm()">Скасувати</button>
                     </div>
 
                 </form>
@@ -140,7 +140,7 @@ class ChatController(http.Controller):
                 'is_html': True
             }
 
-    # ✅ ДОДАЄМО: Допоміжні методи для отримання даних
+    # Допоміжні методи для отримання даних
     def _get_projects(self):
         """Отримуємо список проектів для форми"""
         projects = request.env['project.project'].search([])

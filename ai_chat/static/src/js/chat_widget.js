@@ -129,7 +129,7 @@ function toggleChat() {
     if (chatIsOpen) {
         // Закриваємо чат
         chatWindow.style.display = 'none';
-        chatButton.style.display = 'block';
+        chatButton.style.display = 'flex';
         chatIsOpen = false;
         console.log('📴 Chat closed');
     } else {
@@ -245,14 +245,6 @@ async function handleMessage(message) {
         addMessage('Помилка з\'єднання. Перевір інтернет.', 'bot');
     }
 }
-
-// Додаємо глобальні функції для відладки
-window.aiChatDebug = {
-    toggleChat: toggleChat,
-    sendMessage: sendMessage,
-    addMessage: addMessage,
-    handleMessage: handleMessage
-};
 
 console.log('✅ AI Chat widget script loaded');
 
