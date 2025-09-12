@@ -26,7 +26,7 @@ class ProjectTask(models.Model):
 
     ai_feedback = fields.Text(string='AI Feedback')
 
-    created_by_user_id = fields.Many2one('res.users', string='Created by')
+    created_by_user_id = fields.Many2one('res.users', string='Created by (AI)')
 
     ai_validated = fields.Boolean(string='AI Validated', default=False)
 

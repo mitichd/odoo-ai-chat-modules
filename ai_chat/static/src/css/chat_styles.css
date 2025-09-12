@@ -151,3 +151,131 @@
 .ai-chat-input-area button:hover {
     background: #0056b3;
 }
+
+/* ✅ ДОДАТИ: Стилі для AI Task форми */
+.ai-task-form {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 10px 0;
+    max-width: 100%;
+}
+
+.ai-task-form h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 18px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.ai-task-form .form-group {
+    margin-bottom: 15px;
+}
+
+.ai-task-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+    font-size: 14px;
+}
+
+.ai-task-form input[type="text"],
+.ai-task-form input[type="date"],
+.ai-task-form textarea,
+.ai-task-form select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.ai-task-form input:focus,
+.ai-task-form textarea:focus,
+.ai-task-form select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.ai-task-form textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.ai-task-form small {
+    display: block;
+    margin-top: 5px;
+    color: #6c757d;
+    font-size: 12px;
+}
+
+/* Радіо кнопки для пріоритету */
+.ai-task-form input[type="radio"] {
+    width: auto;
+    margin-right: 5px;
+    margin-left: 15px;
+}
+
+.ai-task-form label:has(input[type="radio"]) {
+    display: inline;
+    font-weight: normal;
+    margin-right: 15px;
+    margin-bottom: 0;
+}
+
+/* Кнопки форми */
+.ai-task-form .form-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: space-between;
+}
+
+.ai-task-form .btn-primary {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    flex: 1;
+}
+
+.ai-task-form .btn-primary:hover {
+    background: #218838;
+}
+
+.ai-task-form .btn-cancel {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    flex: 1;
+}
+
+.ai-task-form .btn-cancel:hover {
+    background: #c82333;
+}
+
+.ai-task-form input[list] {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path d="M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z" fill="%23666"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    padding-right: 35px;
+}
+
+.ai-task-form input[list]:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}

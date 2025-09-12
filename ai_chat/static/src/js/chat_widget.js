@@ -175,7 +175,7 @@ function sendMessage() {
 }
 
 // Додаємо повідомлення в чат
-function addMessage(text, sender) {
+function addMessage(text, sender, isHtml = false) {
     const messagesContainer = document.getElementById('ai-chat-messages');
     if (!messagesContainer) {
         console.error('❌ Messages container not found');
@@ -184,17 +184,29 @@ function addMessage(text, sender) {
 
     const messageDiv = document.createElement('div');
     messageDiv.className = `ai-chat-message ${sender}`;
-    messageDiv.textContent = text;
+
+    // Перевірка на HTML
+    if (isHtml) {
+        messageDiv.innerHTML = text;
+        console.log('🎨 Added HTML message');
+    } else {
+        messageDiv.textContent = text;
+    }
 
     messagesContainer.appendChild(messageDiv);
 
-    // ✅ ДОДАНО: Плавна прокрутка до останнього повідомлення
+    // Після HTML форми прикріпляємо обробники
+    if (isHtml) {
+        setTimeout(() => attachFormHandlers(), 100);
+    }
+
+    // Плавна прокрутка
     setTimeout(() => {
         messagesContainer.scrollTo({
             top: messagesContainer.scrollHeight,
-            behavior: 'smooth' // Плавна анімація прокрутки
+            behavior: 'smooth'
         });
-    }, 100); // ✅ ДОДАНО: Невелика затримка для правильного розрахунку висоти
+    }, 100);
 }
 
 /// ГОЛОВНА ФУНКЦІЯ - обробка повідомлень
@@ -202,7 +214,6 @@ async function handleMessage(message) {
     console.log('🧠 Processing message:', message);
 
     try {
-        // Відправляємо на сервер для обробки
         const response = await fetch('/ai_chat/process_message', {
             method: 'POST',
             headers: {
@@ -220,7 +231,11 @@ async function handleMessage(message) {
         const data = await response.json();
 
         if (data.result) {
-            addMessage(data.result.reply, 'bot');
+            // Перевірка на is_html
+            const isHtml = data.result.is_html || false;
+            addMessage(data.result.reply, 'bot', isHtml);
+
+            console.log(`📨 Response type: ${isHtml ? 'HTML' : 'TEXT'}`);
         } else {
             addMessage('Помилка сервера. Спробуй ще раз.', 'bot');
         }
@@ -240,3 +255,91 @@ window.aiChatDebug = {
 };
 
 console.log('✅ AI Chat widget script loaded');
+
+function attachFormHandlers() {
+    const form = document.getElementById('ai-create-task-form');
+    if (!form) {
+        console.log('⚠️ No form found to attach handlers');
+        return;
+    }
+
+    console.log('🔗 Attaching form handlers');
+
+    // Обробка відправки форми
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log('📝 Form submitted');
+
+        // Збираємо дані з форми
+        const formData = new FormData(form);
+        const taskData = Object.fromEntries(formData.entries());
+
+        console.log('📊 Form data:', taskData);
+
+        try {
+            // Відправляємо на сервер
+            const response = await fetch('/ai_chat/save_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'call',
+                    params: taskData,
+                    id: Math.random()
+                })
+            });
+
+            const result = await response.json();
+            console.log('📊 Server response:', result);
+
+            if (result.result) {
+                if (result.result.success) {
+                    addMessage(result.result.reply, 'bot');
+                    console.log('✅ Task created successfully');
+                } else {
+                    addMessage(result.result.reply || 'Помилка створення', 'bot');
+                    console.log('❌ Task creation failed');
+                }
+            } else {
+                addMessage('Помилка сервера. Перевір консоль.', 'bot');
+                console.error('❌ Unexpected response:', result);
+            }
+
+            if (result.result && result.result.success) {
+                addMessage(result.result.message, 'bot');
+            } else {
+                addMessage(result.result?.message || 'Помилка створення завдання', 'bot');
+            }
+
+            // Видаляємо форму після створення
+            form.closest('.ai-chat-message').remove();
+
+        } catch (error) {
+            console.error('❌ Form submission error:', error);
+            addMessage('Помилка відправки форми. Спробуй ще раз.', 'bot');
+        }
+    });
+
+    // Обробка кнопки "Скасувати"
+    const cancelBtn = form.querySelector('.btn-cancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            console.log('❌ Form cancelled');
+            form.closest('.ai-chat-message').remove();
+            addMessage('Створення завдання скасовано.', 'bot');
+        });
+    }
+}
+
+// Глобальна функція для кнопки "Скасувати" в HTML
+function cancelTaskForm() {
+    const form = document.getElementById('ai-create-task-form');
+    if (form) {
+        form.closest('.ai-chat-message').remove();
+        addMessage('Створення завдання скасовано.', 'bot');
+    }
+}
+

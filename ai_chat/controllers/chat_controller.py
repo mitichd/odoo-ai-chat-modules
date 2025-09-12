@@ -70,23 +70,92 @@ class ChatController(http.Controller):
                 'reply': f"🚀 **Швидке створення завдання:**\n\n"
                          f"📝 Назва: '{text}'\n\n"
                          f"⚡ Для повного створення з усіма параметрами використовуй просто /create_task\n\n"
-                         f"(Повна форма буде реалізована на наступному кроці)"
             }
         else:
-            # Повна форма створення
+            # Повна HTML форма
+            projects = self._get_projects()
+            users = self._get_users()
+
+            html_form = f"""
+            <div class="ai-task-form">
+                <h3>📝 Створення нового завдання</h3>
+                <form id="ai-create-task-form">
+
+                    <div class="form-group">
+                        <label>🎯 Проект:</label>
+                        <input type="text" name="project" list="projects-list" required 
+                               placeholder="Оберіть або введіть назву проекту">
+                        <datalist id="projects-list">
+                            {projects}
+                        </datalist>
+                        <small>💡 Почніть друкувати або натисніть ▼ для вибору</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📝 Назва завдання:</label>
+                        <input type="text" name="task_name" required placeholder="Наприклад: Додати фільтр до API">
+                    </div>
+
+                    <div class="form-group">
+                        <label>📋 Детальний опис:</label>
+                        <textarea name="task_description" required rows="4" placeholder="Опишіть завдання детально..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>👤 Виконавець:</label>
+                        <select name="assignee_id">
+                            <option value="">Оберіть виконавця...</option>
+                            {users}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📅 Дедлайн:</label>
+                        <input type="date" name="deadline">
+                    </div>
+
+                    <div class="form-group">
+                        <label>⚡ Пріоритет:</label>
+                        <label><input type="radio" name="priority" value="low" checked> Low</label>
+                        <label><input type="radio" name="priority" value="high"> High</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>🏷️ Мітки:</label>
+                        <input type="text" name="tags" placeholder="#bug, #feature, #urgent">
+                        <small>Розділяйте комами</small>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="submit" class="btn-primary">✅ Створити завдання</button>
+                        <button type="button" class="btn-cancel" onclick="cancelTaskForm()">❌ Скасувати</button>
+                    </div>
+
+                </form>
+            </div>
+            """
+
             return {
-                'reply': "📝 **Створення нового завдання**\n\n"
-                         "🔄 Тут буде інтерактивна форма:\n"
-                         "• Проект\n"
-                         "• Назва\n"
-                         "• Опис\n"
-                         "• Виконавець\n"
-                         "• Дедлайн\n"
-                         "• Пріоритет\n"
-                         "• Мітки\n"
-                         "• Файли\n\n"
-                         "(Форма буде реалізована на наступному кроці)"
+                'reply': html_form,
+                'is_html': True
             }
+
+    # ✅ ДОДАЄМО: Допоміжні методи для отримання даних
+    def _get_projects(self):
+        """Отримуємо список проектів для форми"""
+        projects = request.env['project.project'].search([])
+        options = ""
+        for project in projects:
+            options += f'<option value="{project.name}" data-id="{project.id}"></option>'
+        return options
+
+    def _get_users(self):
+        """Отримуємо список користувачів для форми"""
+        users = request.env['res.users'].search([('share', '=', False)])  # Тільки внутрішні користувачі
+        options = ""
+        for user in users:
+            options += f'<option value="{user.id}">@{user.login}</option>'
+        return options
 
     def _handle_change_task(self, text):
         """Обробка команди /change_task"""
@@ -170,3 +239,61 @@ class ChatController(http.Controller):
             'reply': f"{action_text}{comment_text}\n\n"
                      f"(Реальна обробка буде реалізована на наступному кроці)"
         }
+
+    @http.route('/ai_chat/save_task', type='json', auth='user')
+    def save_task(self, **kwargs):
+        """
+        Зберігає завдання з форми в базу даних
+        """
+        try:
+            # Отримуємо дані з форми
+            task_data = {
+                'name': kwargs.get('task_name'),
+                'description': kwargs.get('task_description'),
+                'date_deadline': kwargs.get('deadline') if kwargs.get('deadline') else False,
+                'user_ids': [(4, int(kwargs.get('assignee_id')))] if kwargs.get('assignee_id') else [],
+
+                # Наші AI поля
+                'ai_priority': kwargs.get('priority', 'low'),
+                'ai_tags': kwargs.get('tags', ''),
+                'ai_status': 'todo',
+                'created_by_user_id': request.env.user.id,
+                'chat_created': True,
+                'ai_validated': False,
+            }
+
+            # Обробляємо нове поле project
+            project_name = kwargs.get('project')
+            if project_name:
+                # Спочатку шукаємо існуючий проект
+                existing_project = request.env['project.project'].search([
+                    ('name', '=', project_name)
+                ], limit=1)
+
+                if existing_project:
+                    task_data['project_id'] = existing_project.id
+                    project_text = f"(існуючий проект)"
+                else:
+                    # Створюємо новий проект
+                    new_project = request.env['project.project'].sudo().create({
+                        'name': project_name
+                    })
+                    task_data['project_id'] = new_project.id
+                    project_text = f"(новий проект)"
+
+            # Створюємо завдання
+            task = request.env['project.task'].create(task_data)
+
+            return {
+                'success': True,
+                'reply': f"✅ Завдання '{task.name}' створено успішно!\n\n"
+                         f"🆔 ID: {task.id}\n"
+                         f"📁 Проект: {task.project_id.name} {project_text}\n"
+                         f"👤 Виконавець: {task.user_ids[0].name if task.user_ids else 'Не призначено'}"
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'reply': f"❌ Помилка створення завдання: {str(e)}"
+            }
