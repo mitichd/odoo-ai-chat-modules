@@ -281,6 +281,21 @@ class ChatController(http.Controller):
                     task_data['project_id'] = new_project.id
                     project_text = f"(новий проект)"
 
+            # Валідація даних ДО створення завдання
+            validator = request.env['ai_chat.task_validator']
+            is_valid, errors = validator.validate_task_data(task_data)
+
+            if not is_valid:
+                return {
+                    'success': False,
+                    'reply': f"❌ Завдання не пройшло перевірку:\n\n" +
+                             '\n'.join([f"• {error}" for error in errors]) +
+                             "\n\n🔧 Виправте помилки та спробуйте ще раз."
+                }
+
+            # Позначаємо як валідоване
+            task_data['ai_validated'] = True
+
             # Створюємо завдання
             task = request.env['project.task'].create(task_data)
 
@@ -290,6 +305,7 @@ class ChatController(http.Controller):
                          f"🆔 ID: {task.id}\n"
                          f"📁 Проект: {task.project_id.name} {project_text}\n"
                          f"👤 Виконавець: {task.user_ids[0].name if task.user_ids else 'Не призначено'}"
+                         f"✅ Валідація пройдена"
             }
 
         except Exception as e:
