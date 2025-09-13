@@ -8,7 +8,7 @@ class ChatController(http.Controller):
     @http.route('/ai_chat/process_message', type='json', auth='user')
     def process_message(self, message):
         """
-        Обробляє повідомлення від чату.
+        Обробляє повідомлення від чату з фільтрацією команд по ролях.
         """
         parser = CommandParser()
         result = parser.parse_message(message)
@@ -25,6 +25,22 @@ class ChatController(http.Controller):
         command = result['command']
         text = result['text']
 
+        # Перевірка ролей перед обробкою команди
+        role_manager = request.env['ai_chat.role_manager']
+        if not role_manager.check_permission(request.env.user, command):
+            # Отримуємо список доступних команд для користувача
+            available_commands = role_manager.get_available_commands(request.env.user)
+            user_role = role_manager.get_user_role(request.env.user)
+            role_description = role_manager.get_role_description(user_role)
+
+            return {
+                'reply': f"❌ У вас немає прав для команди /{command}\n\n"
+                         f"👤 Ваша роль: {user_role}\n"
+                         f"📝 {role_description}\n\n"
+                         f"✅ Доступні команди:\n" +
+                         '\n'.join([f"• /{cmd}" for cmd in available_commands if cmd != 'help'])
+            }
+
         # Валідація команди
         is_valid, validation_message = parser.validate_command(command, text)
         if not is_valid:
@@ -32,7 +48,7 @@ class ChatController(http.Controller):
 
         # Обробка команд
         if command == 'help':
-            return self._handle_help(parser)
+            return self._handle_help(parser, role_manager)
         elif command == 'create_task':
             return self._handle_create_task(text)
         elif command == 'change_task':
@@ -40,11 +56,11 @@ class ChatController(http.Controller):
         elif command == 'list_tasks':
             return self._handle_list_tasks()
         elif command in ['edit_task', 'complete_task', 'return_task', 'approve_task']:
-            return self._handle_task_action(command, text, parser)
+            return self._handle_task_action(command, text, parser, role_manager)
         elif command == 'assign_task':
-            return self._handle_assign_task(text, parser)
+            return self._handle_assign_task(text, parser, role_manager)
         elif command in ['cancel_task', 'pause_task', 'resume_task', 'comment_task']:
-            return self._handle_task_management(command, text, parser)
+            return self._handle_task_management(command, text, parser, role_manager)
         else:
             return {
                 'reply': f"❓ Невідома команда: /{command}\n\n"
@@ -53,12 +69,26 @@ class ChatController(http.Controller):
 
         # Окремі методи для кожної команди
 
-    def _handle_help(self, parser):
-        """Обробка команди /help"""
+    def _handle_help(self, parser, role_manager):
+        """Обробка команди /help з урахуванням ролі користувача"""
+        # Отримуємо доступні команди для поточного користувача
+        available_commands = role_manager.get_available_commands(request.env.user)
+        user_role = role_manager.get_user_role(request.env.user)
+        role_description = role_manager.get_role_description(user_role)
+
+        # Отримуємо описи команд з парсера
         help_commands = parser.get_help()
-        commands_text = '\n'.join([f"• /{cmd} - {desc}" for cmd, desc in help_commands.items()])
+
+        # Фільтруємо тільки доступні команди
+        filtered_commands = {cmd: desc for cmd, desc in help_commands.items()
+                             if cmd in available_commands}
+
+        commands_text = '\n'.join([f"• /{cmd} - {desc}" for cmd, desc in filtered_commands.items()])
+
         return {
-            'reply': f"📋 **Доступні команди:**\n\n{commands_text}\n\n"
+            'reply': f"📋 **Доступні команди для {user_role}:**\n\n"
+                     f"�� {role_description}\n\n"
+                     f"{commands_text}\n\n"
                      f"💡 Для детальної інформації про команду використовуй: /команда"
         }
 
@@ -192,15 +222,28 @@ class ChatController(http.Controller):
                      "(Реальні дані будуть підключені на наступному кроці)"
         }
 
-    def _handle_task_action(self, command, text, parser):
-        """Обробка команд дій з завданнями"""
+    def _handle_task_action(self, command, text, parser, role_manager):
+        """Обробка команд дій з завданнями з перевіркою доступу"""
         task_id, comment = parser.parse_task_id(text)
+
+        # ✅ ДОДАЄМО: Перевірка доступу до завдання
+        if task_id:
+            try:
+                task = request.env['project.task'].browse(int(task_id))
+                if task.exists():
+                    if not role_manager.can_edit_task(request.env.user, task):
+                        return {
+                            'reply': f"❌ У вас немає прав для редагування завдання #{task_id}\n\n"
+                                     f"👤 Ви можете редагувати тільки свої завдання"
+                        }
+            except (ValueError, TypeError):
+                return {'reply': f"❌ Неправильний ID завдання: {task_id}"}
 
         actions = {
             'edit_task': f"✏️ **Редагування завдання #{task_id}**",
             'complete_task': f"✅ **Завершення завдання #{task_id}**",
             'return_task': f"↩️ **Повернення завдання #{task_id}**",
-            'approve_task': f"👍 **Затвердження завдання #{task_id}**"
+            'approve_task': f"�� **Затвердження завдання #{task_id}**"
         }
 
         action_text = actions.get(command, f"Дія {command}")
@@ -211,19 +254,40 @@ class ChatController(http.Controller):
                      f"(Реальна обробка буде реалізована на наступному кроці)"
         }
 
-    def _handle_assign_task(self, text, parser):
-        """Обробка команди /assign_task"""
+    def _handle_assign_task(self, text, parser, role_manager):
+        """Обробка команди /assign_task з перевіркою прав"""
+        # Тільки PM може призначати завдання
+        user_role = role_manager.get_user_role(request.env.user)
+        if user_role != 'PM':
+            return {
+                'reply': f"❌ Тільки Project Manager може призначати завдання\n\n"
+                         f"�� Ваша роль: {user_role}"
+            }
+
         task_id, username, comment = parser.parse_user_mention(text)
         return {
-            'reply': f"👤 **Переназначення завдання #{task_id}**\n\
-            n🔄 Новий виконавець: @{username}\n"
-                     f"💬 Коментар: '{comment}'\n\n"
+            'reply': f"�� **Переназначення завдання #{task_id}**\n\n"
+                     f"🔄 Новий виконавець: @{username}\n"
+                     f"�� Коментар: '{comment}'\n\n"
                      f"(Реальна обробка буде реалізована на наступному кроці)"
         }
 
-    def _handle_task_management(self, command, text, parser):
-        """Обробка команд управління завданнями"""
+    def _handle_task_management(self, command, text, parser, role_manager):
+        """Обробка команд управління завданнями з перевіркою доступу"""
         task_id, comment = parser.parse_task_id(text)
+
+        # ✅ ДОДАЄМО: Перевірка доступу до завдання
+        if task_id:
+            try:
+                task = request.env['project.task'].browse(int(task_id))
+                if task.exists():
+                    if not role_manager.can_edit_task(request.env.user, task):
+                        return {
+                            'reply': f"❌ У вас немає прав для управління завданням #{task_id}\n\n"
+                                     f"👤 Ви можете керувати тільки своїми завданнями"
+                        }
+            except (ValueError, TypeError):
+                return {'reply': f"❌ Неправильний ID завдання: {task_id}"}
 
         actions = {
             'cancel_task': f"❌ **Скасування завдання #{task_id}**",
@@ -233,7 +297,7 @@ class ChatController(http.Controller):
         }
 
         action_text = actions.get(command, f"Дія {command}")
-        comment_text = f"\n📝 Текст: '{comment}'" if comment else ""
+        comment_text = f"\n�� Текст: '{comment}'" if comment else ""
 
         return {
             'reply': f"{action_text}{comment_text}\n\n"
