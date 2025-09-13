@@ -63,7 +63,7 @@ class CommandParser:
             'help': 'Показати цю довідку'
         }
 
-    # ✅ ДОДАЄМО: Перевірка команд з ID
+    # Перевірка команд з ID
     def parse_task_id(self, text):
         """
         Витягує ID завдання з тексту команди.
@@ -80,7 +80,7 @@ class CommandParser:
         except ValueError:
             return None, text
 
-    # ✅ ДОДАЄМО: Перевірка команд з користувачем
+    # Перевірка команд з користувачем
     def parse_user_mention(self, text):
         """
         Витягує згадку користувача з тексту.
@@ -98,7 +98,7 @@ class CommandParser:
 
         return task_id, None, remaining
 
-    # ✅ ДОДАЄМО: Валідація команд
+    # Валідація команд
     def validate_command(self, command, text):
         """
         Перевіряє чи команда має правильний формат.

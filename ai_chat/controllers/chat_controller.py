@@ -25,26 +25,13 @@ class ChatController(http.Controller):
         command = result['command']
         text = result['text']
 
-        # Перевірка ролей перед обробкою команди
-        role_manager = request.env['ai_chat.role_manager']
-        if not role_manager.check_permission(request.env.user, command):
-            # Отримуємо список доступних команд для користувача
-            available_commands = role_manager.get_available_commands(request.env.user)
-            user_role = role_manager.get_user_role(request.env.user)
-            role_description = role_manager.get_role_description(user_role)
-
-            return {
-                'reply': f"❌ У вас немає прав для команди /{command}\n\n"
-                         f"👤 Ваша роль: {user_role}\n"
-                         f"📝 {role_description}\n\n"
-                         f"✅ Доступні команди:\n" +
-                         '\n'.join([f"• /{cmd}" for cmd in available_commands if cmd != 'help'])
-            }
-
         # Валідація команди
         is_valid, validation_message = parser.validate_command(command, text)
         if not is_valid:
             return {'reply': f"❌ {validation_message}"}
+
+        # Перевірка ролі
+        role_manager = request.env['ai_chat.role_manager']
 
         # Обробка команд
         if command == 'help':
@@ -65,6 +52,21 @@ class ChatController(http.Controller):
             return {
                 'reply': f"❓ Невідома команда: /{command}\n\n"
                          f"Спробуй /help для списку команд"
+            }
+
+        # Перевірка прав відповідно ролі
+        if not role_manager.check_permission(request.env.user, command):
+            # Отримуємо список доступних команд для користувача
+            available_commands = role_manager.get_available_commands(request.env.user)
+            user_role = role_manager.get_user_role(request.env.user)
+            role_description = role_manager.get_role_description(user_role)
+
+            return {
+                'reply': f"❌ У вас немає прав для команди /{command}\n\n"
+                         f"👤 Ваша роль: {user_role}\n"
+                         f"📝 {role_description}\n\n"
+                         f"✅ Доступні команди:\n" +
+                         '\n'.join([f"• /{cmd}" for cmd in available_commands if cmd != 'help'])
             }
 
         # Окремі методи для кожної команди
@@ -212,21 +214,65 @@ class ChatController(http.Controller):
             }
 
     def _handle_list_tasks(self):
-        """Обробка команди /list_tasks"""
-        return {
-            'reply': "📋 **Список завдань:**\n\n"
-                     "🔍 ID | Назва | Статус | Виконавець | Дедлайн\n"
-                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                     "📌 001 | Тестове завдання | To Do | @dev1 | 2025-09-15\n"
-                     "📌 002 | Додати API | In Progress | @dev2 | 2025-09-20\n\n"
-                     "(Реальні дані будуть підключені на наступному кроці)"
-        }
+        """Обробка команди /list_tasks - показує список завдань користувача"""
+        try:
+            user = request.env.user
+
+            # Отримуємо завдання користувача
+            tasks = request.env['project.task'].search([
+                ('user_ids', 'in', [user.id])
+            ], order='date_deadline asc, id asc')
+
+            if not tasks:
+                return {
+                    'reply': "📋 **Список завдань:**\n\n"
+                             "🔍 У вас немає призначених завдань"
+                }
+
+            # Форматуємо список завдань
+            tasks_list = []
+            for task in tasks:
+                # Статус завдання
+                status_emoji = {
+                    'todo': '📝',
+                    'in_progress': '👨‍💻',
+                    'done': '✅',
+                    'cancelled': '❌',
+                    'paused': '⏸️',
+                    'review': '👀'
+                }.get(task.ai_status or 'todo', '📝')
+
+                # Дедлайн
+                deadline = task.date_deadline.strftime('%Y-%m-%d') if task.date_deadline else 'Не вказано'
+
+                # Пріоритет
+                priority = '🔥' if task.ai_priority == 'high' else '🐌'
+
+                # Форматуємо рядок завдання
+                task_line = f"{status_emoji} -#{task.id}- {task.name}|{deadline}|{priority}"
+                tasks_list.append(task_line)
+
+            # Збираємо результат
+            tasks_text = '\n'.join(tasks_list)
+
+            return {
+                'reply': f"📋 --Список ваших завдань({len(tasks)}):--\n\n"
+                         f"🔍ID|Назва|Дедлайн|Пріоритет\n"
+                         f"━━━━━━━━━━━━━━━\n"
+                         f"{tasks_text}\n\n"
+                         f"💡 Використовуйте /complete_task ID для завершення"
+            }
+
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка отримання списку завдань: {str(e)}"
+            }
 
     def _handle_task_action(self, command, text, parser, role_manager):
         """Обробка команд дій з завданнями з перевіркою доступу"""
         task_id, comment = parser.parse_task_id(text)
 
-        # ✅ ДОДАЄМО: Перевірка доступу до завдання
+        # Перевірка доступу до завдання
         if task_id:
             try:
                 task = request.env['project.task'].browse(int(task_id))
@@ -276,7 +322,7 @@ class ChatController(http.Controller):
         """Обробка команд управління завданнями з перевіркою доступу"""
         task_id, comment = parser.parse_task_id(text)
 
-        # ✅ ДОДАЄМО: Перевірка доступу до завдання
+        # Перевірка доступу до завдання
         if task_id:
             try:
                 task = request.env['project.task'].browse(int(task_id))
