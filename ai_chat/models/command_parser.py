@@ -124,7 +124,10 @@ class CommandParser:
 
         if command == 'assign_task':
             task_id, username, _ = self.parse_user_mention(text)
+            # if not task_id and not username:
+            if task_id is None:
+                return False, f"Команда /{command} потребує ID завдання та користувача. Приклад: /{command} 123 @dev"
             if username is None:
-                return False, f"Команда /assign_task потребує користувача. Приклад: /assign_task 123 @dev2"
+                return False, f"Команда /{command} потребує ID завдання та користувача. Приклад: /{command} 123 @dev"
 
         return True, "OK"

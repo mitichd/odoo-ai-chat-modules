@@ -565,6 +565,62 @@ class ChatController(http.Controller):
                 'reply': f"❌ Помилка затвердження завдання: {str(e)}"
             }
 
+    def _handle_assign_task(self, text, parser, role_manager):
+        """Обробка команди /assign_task з перевіркою прав"""
+        # Тільки PM може призначати завдання
+        user_role = role_manager.get_user_role(request.env.user)
+        if user_role != 'PM':
+            return {
+                'reply': f"❌ Тільки Project Manager може призначати завдання\n\n"
+                         f" Ваша роль: {user_role}"
+            }
+
+        # Парсимо параметри
+        task_id, username, comment = parser.parse_user_mention(text)
+
+        try:
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(task_id)
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+
+            # Знаходимо користувача по login або по частині login
+            assignee = request.env['res.users'].search([
+                '|',  # АБО
+                ('login', '=', username),  # Точний пошук: "demo"
+                ('login', 'ilike', f"{username}@%"),  # Пошук по email: "test@%"
+                ('share', '=', False)
+            ], limit=1)
+
+            if not assignee:
+                return {
+                    'reply': f"❌ Користувач @{username} не знайдено\n\n"
+                             f"💡 Перевірте правильність імені користувача"
+                }
+
+            # Призначаємо завдання
+            task.write({
+                'user_ids': [(4, assignee.id)]  # Додаємо користувача до списку виконавців
+            })
+
+            # Форматуємо відповідь
+            comment_text = f"\n Коментар: '{comment}'" if comment else ""
+
+            return {
+                'reply': f"✅ **Завдання #{task_id} призначено!**\n\n"
+                         f"📌 Назва: {task.name}\n"
+                         f"⚡️ Новий виконавець: @{assignee.login}\n"
+                         f"👤 Призначив: {request.env.user.name}{comment_text}\n\n"
+                         f"🎯 Завдання успішно переназначено"
+            }
+
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка призначення завдання: {str(e)}"
+            }
+
     @http.route('/ai_chat/save_task', type='json', auth='user')
     def save_task(self, **kwargs):
         """
