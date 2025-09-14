@@ -285,9 +285,13 @@ class ChatController(http.Controller):
             except (ValueError, TypeError):
                 return {'reply': f"❌ Неправильний ID завдання: {task_id}"}
 
+        # Реальна обробка complete_task
+        if command == 'complete_task':
+            return self._handle_complete_task(task_id, comment)
+
+        # Інші команди (поки що заглушки)
         actions = {
             'edit_task': f"✏️ **Редагування завдання #{task_id}**",
-            'complete_task': f"✅ **Завершення завдання #{task_id}**",
             'return_task': f"↩️ **Повернення завдання #{task_id}**",
             'approve_task': f"�� **Затвердження завдання #{task_id}**"
         }
@@ -349,6 +353,78 @@ class ChatController(http.Controller):
             'reply': f"{action_text}{comment_text}\n\n"
                      f"(Реальна обробка буде реалізована на наступному кроці)"
         }
+
+    def _handle_complete_task(self, task_id, comment):
+        """
+        Обробка команди /complete_task - завершення завдання виконавцем
+        """
+        try:
+            if not task_id:
+                return {
+                    'reply': "❌ Неправильний формат команди\n\n"
+                             "💡 Використовуйте: /complete_task 123"
+                }
+
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(int(task_id))
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+
+            # Перевірка ролі та прав
+            user = request.env.user
+            role_manager = request.env['ai_chat.role_manager']
+            user_role = role_manager.get_user_role(user)
+
+            # PM може завершувати будь-які завдання
+            if user_role == 'PM':
+                # PM може завершувати все
+                pass
+            # Dev може завершувати тільки свої завдання
+            elif user_role == 'Dev':
+                if user not in task.user_ids:
+                    return {
+                        'reply': f"❌ Завдання #{task_id} не призначене вам\n\n"
+                                 f"👤 Ви можете завершувати тільки свої завдання"
+                    }
+            else:
+                return {
+                    'reply': f"❌ У вас немає прав для завершення завдань\n\n"
+                             f"�� Ваша роль: {user_role}"
+                }
+
+            # Змінюємо статус на "Done"
+            task.write({
+                'ai_status': 'done',
+            })
+
+            # Форматуємо відповідь з урахуванням ролі
+            if user_role == 'PM':
+                assignee_name = task.user_ids[0].name if task.user_ids else 'Не призначено'
+                return {
+                    'reply': f"✅ **Завдання #{task_id} завершено PM!**\n\n"
+                             f"�� Назва: {task.name}\n"
+                             f"👤 Виконавець: {assignee_name}\n"
+                             f" Завершив: {user.name}\n\n"
+                             f"🎯 Статус змінено на: Done"
+                }
+            else:
+                return {
+                    'reply': f"✅ **Завдання #{task_id} завершено!**\n\n"
+                             f"�� Назва: {task.name}\n"
+                             f"👤 Виконавець: {user.name}\n\n"
+                             f"�� Статус змінено на: Done"
+                }
+
+        except (ValueError, TypeError):
+            return {
+                'reply': f"❌ Неправильний ID завдання: {task_id}"
+            }
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка завершення завдання: {str(e)}"
+            }
 
     @http.route('/ai_chat/save_task', type='json', auth='user')
     def save_task(self, **kwargs):
