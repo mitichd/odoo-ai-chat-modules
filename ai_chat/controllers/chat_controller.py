@@ -293,6 +293,10 @@ class ChatController(http.Controller):
         if command == 'complete_task':
             return self._handle_complete_task(task_id, comment)
 
+        # Реальна обробка approve_task
+        if command == 'approve_task':
+            return self._handle_approve_task(task_id, comment)
+
         # Інші команди (поки що заглушки)
         actions = {
             'edit_task': f"✏️ **Редагування завдання #{task_id}**",
@@ -496,6 +500,69 @@ class ChatController(http.Controller):
         except Exception as e:
             return {
                 'reply': f"❌ Помилка повернення завдання: {str(e)}"
+            }
+
+    def _handle_approve_task(self, task_id, comment):
+        """
+        Обробка команди /approve_task - затвердження завдання PM
+        """
+        try:
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(task_id)
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+
+            # Перевіряємо роль - тільки PM може затверджувати
+            user = request.env.user
+            role_manager = request.env['ai_chat.role_manager']
+            user_role = role_manager.get_user_role(user)
+
+            if user_role != 'PM':
+                return {
+                    'reply': f"❌ Тільки Project Manager може затверджувати завдання\n\n"
+                             f"👤 Ваша роль: {user_role}"
+                }
+
+            # Визначаємо статус на основі поточного
+            current_status = task.ai_status
+
+            if current_status == 'done':
+                new_status = 'done'  # Closed
+                status_text = "Closed"
+            elif current_status == 'review':
+                new_status = 'in_progress'  # In Progress
+                status_text = "In Progress"
+            else:
+                new_status = 'in_progress'
+                status_text = "In Progress"
+
+            # Змінюємо статус і додаємо тег
+            task.write({
+                'ai_status': new_status,
+                'ai_tags': (task.ai_tags or '') + ', #approved' if task.ai_tags else '#approved'
+            })
+
+            # Форматуємо відповідь
+            assignee_name = task.user_ids[0].name if task.user_ids else 'Не призначено'
+
+            return {
+                'reply': f"✅ **Завдання #{task_id} затверджено!**\n\n"
+                         f"📌 Назва: {task.name}\n"
+                         f"🦾 Виконавець: {assignee_name}\n"
+                         f"👤 Затвердив: {user.name}\n\n"
+                         f"🎯 Статус змінено на: {status_text}"
+                         f"️🏷️ Додано тег: #approved"
+            }
+
+        except (ValueError, TypeError) as e:
+            return {
+                'reply': f"❌ Неправильний ID завдання: {task_id}"
+            }
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка затвердження завдання: {str(e)}"
             }
 
     @http.route('/ai_chat/save_task', type='json', auth='user')
