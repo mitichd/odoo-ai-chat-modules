@@ -285,6 +285,10 @@ class ChatController(http.Controller):
             except (ValueError, TypeError):
                 return {'reply': f"❌ Неправильний ID завдання: {task_id}"}
 
+        # Реальна обробка return_task
+        if command == 'return_task':
+            return self._handle_return_task(task_id, comment)
+
         # Реальна обробка complete_task
         if command == 'complete_task':
             return self._handle_complete_task(task_id, comment)
@@ -292,7 +296,6 @@ class ChatController(http.Controller):
         # Інші команди (поки що заглушки)
         actions = {
             'edit_task': f"✏️ **Редагування завдання #{task_id}**",
-            'return_task': f"↩️ **Повернення завдання #{task_id}**",
             'approve_task': f"�� **Затвердження завдання #{task_id}**"
         }
 
@@ -424,6 +427,75 @@ class ChatController(http.Controller):
         except Exception as e:
             return {
                 'reply': f"❌ Помилка завершення завдання: {str(e)}"
+            }
+
+    def _handle_return_task(self, task_id, comment):
+        """
+        Обробка команди /return_task - повернення завдання PM для доопрацювання
+        """
+        try:
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(int(task_id))
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+
+            # Перевіряємо роль та права
+            user = request.env.user
+            role_manager = request.env['ai_chat.role_manager']
+            user_role = role_manager.get_user_role(user)
+
+            # PM може повертати будь-які завдання
+            if user_role == 'PM':
+                pass
+            # Dev може повертати тільки свої завдання
+            elif user_role == 'Dev':
+                if user not in task.user_ids:
+                    return {
+                        'reply': f"❌ Завдання #{task_id} не призначене вам\n\n"
+                                 f"👤 Ви можете повертати тільки свої завдання"
+                    }
+            else:
+                return {
+                    'reply': f"❌ У вас немає прав для повернення завдань\n\n"
+                             f"👤 Ваша роль: {user_role}"
+                }
+
+            # Змінюємо статус на "Needs Review" і додаємо тег
+            task.write({
+                'ai_status': 'review',
+                'ai_tags': (task.ai_tags or '') + ', #needs_review' if task.ai_tags else '#needs_review'
+            })
+
+            # Форматуємо відповідь з урахуванням ролі
+            if user_role == 'PM':
+                assignee_name = task.user_ids[0].name if task.user_ids else 'Не призначено'
+                return {
+                    'reply': f"↩️ Завдання #{task_id} повернено PM!\n\n"
+                             f"📌 Назва: {task.name}\n"
+                             f"🦾 Виконавець: {assignee_name}\n"
+                             f"🧐 Повернув: {user.name}\n\n"
+                             f"💬 Комент: {comment}\n\n"
+                             f"🎯 Статус змінено на: Needs Review\n"
+                             f"🏷️ Додано тег: #needs_review"
+                }
+            else:
+                return {
+                    'reply': f"↩️ Завдання #{task_id} повернено!\n\n"
+                             f"📌 Назва: {task.name} \n"
+                             f"🧐 Повернув: {user.name} \n\n"
+                             f"🎯 Статус змінено на: Needs Review\n"
+                             f"🏷️ Додано тег: #needs_review"
+                }
+
+        except (ValueError, TypeError):
+            return {
+                'reply': f"❌ Неправильний ID завдання: {task_id}"
+            }
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка повернення завдання: {str(e)}"
             }
 
     @http.route('/ai_chat/save_task', type='json', auth='user')

@@ -104,14 +104,23 @@ class CommandParser:
         Перевіряє чи команда має правильний формат.
         """
         commands_with_id = [
-            'edit_task', 'complete_task', 'return_task', 'approve_task',
-            'assign_task', 'cancel_task', 'pause_task', 'resume_task', 'comment_task'
+            'edit_task', 'complete_task', 'approve_task',
+            'cancel_task', 'pause_task', 'resume_task'
+        ]
+
+        commands_with_id_comment = [
+            'return_task', 'comment_task'
         ]
 
         if command in commands_with_id:
             task_id, _ = self.parse_task_id(text)
             if task_id is None:
                 return False, f"Команда /{command} потребує ID завдання. Приклад: /{command} 123"
+
+        if command in commands_with_id_comment:
+            task_id, _ = self.parse_task_id(text)
+            if task_id is None:
+                return False, f"Команда /{command} потребує ID завдання. Приклад: /{command} 123 [коментар]"
 
         if command == 'assign_task':
             task_id, username, _ = self.parse_user_mention(text)
