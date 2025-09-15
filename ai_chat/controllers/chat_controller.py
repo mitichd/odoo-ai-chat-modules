@@ -358,6 +358,10 @@ class ChatController(http.Controller):
         if command == 'resume_task':
             return self._handle_resume_task(task_id, comment)
 
+        # Реальна обробка cancel_task
+        if command == 'comment_task':
+            return self._handle_comment_task(task_id, comment)
+
         actions = {
             'pause_task': f"⏸️ **Призупинення завдання #{task_id}**",
             'resume_task': f"▶️ **Відновлення завдання #{task_id}**",
@@ -830,6 +834,43 @@ class ChatController(http.Controller):
 
         # Якщо не розпізнали статус - за замовчуванням "todo"
         return 'todo'
+
+    def _handle_comment_task(self, task_id, comment):
+        """
+        Обробка команди /comment_task - додавання коментаря до завдання
+        Формат: /comment_task 123 [коментар]
+        """
+        try:
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(task_id)
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+
+            user = request.env.user
+
+            # Додаємо коментар до завдання
+            task.message_post(
+                body=f"💬 **Коментар від {user.name}:**\n\n{comment}",
+                message_type='comment'
+            )
+
+            # Форматуємо відповідь
+            assignee_name = task.user_ids[0].name if task.user_ids else 'Не призначено'
+
+            return {
+                'reply': f"💬 **Коментар додано до завдання #{task_id}**\n\n"
+                         f"📌 Назва: {task.name}\n"
+                         f"�� Виконавець: {assignee_name}\n"
+                         f"👌 Коментував: {user.name}\n\n"
+                         f"💭 Коментар: {comment}"
+            }
+
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка додавання коментаря: {str(e)}"
+            }
 
     @http.route('/ai_chat/save_task', type='json', auth='user')
     def save_task(self, **kwargs):

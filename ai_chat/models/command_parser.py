@@ -118,9 +118,13 @@ class CommandParser:
                 return False, f"Команда /{command} потребує ID завдання. Приклад: /{command} 123"
 
         if command in commands_with_id_comment:
-            task_id, _ = self.parse_task_id(text)
+            task_id, remaining_text = self.parse_task_id(text)
             if task_id is None:
                 return False, f"Команда /{command} потребує ID завдання. Приклад: /{command} 123 [коментар]"
+
+            # Перевірка наявності коментаря
+            if not remaining_text or remaining_text.strip() == "":
+                return False, f"Команда /{command} потребує коментар. Приклад: /{command} 123 [коментар]"
 
         if command == 'assign_task':
             task_id, username, _ = self.parse_user_mention(text)
