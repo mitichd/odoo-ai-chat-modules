@@ -346,8 +346,11 @@ class ChatController(http.Controller):
             except (ValueError, TypeError):
                 return {'reply': f"❌ Неправильний ID завдання: {task_id}"}
 
+        # Реальна обробка cancel_task
+        if command == 'cancel_task':
+            return self._handle_cancel_task(task_id, comment)
+
         actions = {
-            'cancel_task': f"❌ **Скасування завдання #{task_id}**",
             'pause_task': f"⏸️ **Призупинення завдання #{task_id}**",
             'resume_task': f"▶️ **Відновлення завдання #{task_id}**",
             'comment_task': f"💬 **Коментар до завдання #{task_id}**"
@@ -619,6 +622,64 @@ class ChatController(http.Controller):
         except Exception as e:
             return {
                 'reply': f"❌ Помилка призначення завдання: {str(e)}"
+            }
+
+    def _handle_cancel_task(self, task_id, reason):
+        """
+        Обробка команди /cancel_task - скасування завдання
+        """
+        try:
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(task_id)
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+
+            # Перевіряємо роль та права
+            user = request.env.user
+            role_manager = request.env['ai_chat.role_manager']
+            user_role = role_manager.get_user_role(user)
+
+            # PM може скасовувати будь-які завдання
+            if user_role == 'PM':
+                pass
+            # Dev не може скасовувати завдання
+            elif user_role == 'Dev':
+                return {
+                    'reply': f"❌ У вас немає прав для скасування завдань\n\n"
+                             f" Ваша роль: {user_role}"
+                }
+
+            # Перевірка наявності причини скасування
+            if not reason or reason.strip() == "":
+                return {
+                    'reply': "❌ Необхідно вказати причину скасування\n\n"
+                             "💡 Використовуйте: /cancel_task 123 [причина]"
+                }
+
+            # Змінюємо статус на "Cancelled" і додаємо тег
+            task.write({
+                'ai_status': 'cancelled',
+                'ai_tags': (task.ai_tags or '') + ', #cancelled' if task.ai_tags else '#cancelled'
+            })
+
+            # Форматуємо відповідь
+            reason_text = f"\n Причина: '{reason}'" if reason else ""
+            assignee_name = task.user_ids[0].name if task.user_ids else 'Не призначено'
+
+            return {
+                'reply': f"❌ **Завдання #{task_id} скасовано!**\n\n"
+                         f" Назва: {task.name}\n"
+                         f" Виконавець: {assignee_name}\n"
+                         f" Скасував: {user.name}{reason_text}\n\n"
+                         f" Статус змінено на: Cancelled\n"
+                         f"️ Додано тег: #cancelled"
+            }
+
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка скасування завдання: {str(e)}"
             }
 
     @http.route('/ai_chat/save_task', type='json', auth='user')
