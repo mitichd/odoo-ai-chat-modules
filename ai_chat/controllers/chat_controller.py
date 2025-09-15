@@ -1,6 +1,7 @@
 from odoo import http
 from odoo.http import request
 from ..models.command_parser import CommandParser
+import re
 
 
 class ChatController(http.Controller):
@@ -89,9 +90,8 @@ class ChatController(http.Controller):
 
         return {
             'reply': f"📋 **Доступні команди для {user_role}:**\n\n"
-                     f"�� {role_description}\n\n"
+                     f"ℹ️ {role_description}\n\n"
                      f"{commands_text}\n\n"
-                     f"💡 Для детальної інформації про команду використовуй: /команда"
         }
 
     def _handle_create_task(self, text):
@@ -249,18 +249,18 @@ class ChatController(http.Controller):
                 priority = '🔥' if task.ai_priority == 'high' else '🐌'
 
                 # Форматуємо рядок завдання
-                task_line = f"{status_emoji} -#{task.id}- {task.name}|{deadline}|{priority}"
+                task_line = f"{status_emoji} **#{task.id}: {task.name}**|{deadline}|{priority}"
                 tasks_list.append(task_line)
 
             # Збираємо результат
             tasks_text = '\n'.join(tasks_list)
 
             return {
-                'reply': f"📋 --Список ваших завдань({len(tasks)}):--\n\n"
+                'reply': f"📋 **Список ваших завдань({len(tasks)}):**\n\n"
                          f"🔍ID|Назва|Дедлайн|Пріоритет\n"
                          f"━━━━━━━━━━━━━━━\n"
                          f"{tasks_text}\n\n"
-                         f"💡 Використовуйте /complete_task ID для завершення"
+                         f"💡 *Використовуйте /complete_task ID для завершення*"
             }
 
         except Exception as e:
@@ -353,6 +353,10 @@ class ChatController(http.Controller):
         # Реальна обробка pause_task
         if command == 'pause_task':
             return self._handle_pause_task(task_id, comment)
+
+        # Реальна обробка resume_task
+        if command == 'resume_task':
+            return self._handle_resume_task(task_id, comment)
 
         actions = {
             'pause_task': f"⏸️ **Призупинення завдання #{task_id}**",
@@ -748,6 +752,84 @@ class ChatController(http.Controller):
             return {
                 'reply': f"❌ Помилка призупинення завдання: {str(e)}"
             }
+
+    def _handle_resume_task(self, task_id, comment):
+        """
+        Обробка команди /resume_task - відновлення завдання
+        Формат: /resume_task 123 [статус]
+        """
+        try:
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(task_id)
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+            # Перевіряємо чи завдання на паузі
+            if task.ai_status != 'paused':
+                return {
+                    'reply': f"❌ Завдання #{task_id} не на паузі\n\n"
+                             f"👤 Поточний статус: {task.ai_status}"
+                }
+
+            # Перевіряємо роль (п.с.реалізувати це окремо, щоб не дублювати кругом)
+            user = request.env.user
+            role_manager = request.env['ai_chat.role_manager']
+            user_role = role_manager.get_user_role(user)
+
+            # тільки PM може відновлювати завдання
+            if user_role != 'PM':
+                return {
+                    'reply': f"❌ У вас немає прав для відновлення завдань\n\n"
+                             f" Ваша роль: {user_role}"
+                }
+
+            # ПАРСИМО СТАТУС З КОМЕНТАРЯ
+            new_status = self._parse_resume_status(comment)
+
+            # Змінюємо статус
+            task.write({
+                'ai_status': new_status,
+            })
+
+            # Форматуємо відповідь
+            assignee_name = task.user_ids[0].name if task.user_ids else 'Не призначено'
+            status_text = "To Do" if new_status == 'todo' else "In Progress"
+
+            return {
+                'reply': f"▶️ **Завдання #{task_id} відновлено!**\n\n"
+                         f"📌 Назва: {task.name}\n"
+                         f"👤 Виконавець: {assignee_name}\n"
+                         f"👌 Відновив: {user.name}\n\n"
+                         f"🎯 Статус змінено на: {status_text}\n"
+            }
+
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка відновлення завдання: {str(e)}"
+            }
+
+    def _parse_resume_status(self, comment):
+        """
+        Парсить статус з коментаря для команди /resume_task за допомогою regex
+        Повертає: new_status
+        """
+        if not comment or comment.strip() == "":
+            # Якщо коментар порожній - за замовчуванням "todo"
+            return 'todo'
+
+        comment = comment.strip().lower()
+
+        # REGEX для "In Progress" (нечутливий до регістру)
+        if re.match(r'^(in\s+progress|inprogress|in_progress|inprogres)$', comment):
+            return 'in_progress'
+
+        # REGEX для "To Do" (нечутливий до регістру)
+        if re.match(r'^(to\s+do|todo|todos)$', comment):
+            return 'todo'
+
+        # Якщо не розпізнали статус - за замовчуванням "todo"
+        return 'todo'
 
     @http.route('/ai_chat/save_task', type='json', auth='user')
     def save_task(self, **kwargs):
