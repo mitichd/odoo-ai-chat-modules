@@ -185,20 +185,18 @@ function addMessage(text, sender, isHtml = false) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `ai-chat-message ${sender}`;
 
-    // Перевірка на HTML
     if (isHtml) {
         messageDiv.innerHTML = text;
         console.log('🎨 Added HTML message');
+        setTimeout(() => attachFormHandlers(), 100);
     } else {
-        messageDiv.textContent = text;
+        // ОБРОБЛЯЄМО MARKDOWN-ПОДІБНИЙ СИНТАКСИС
+        const processedText = processMarkdown(text);
+        messageDiv.innerHTML = processedText;
+        console.log('�� Added processed text message');
     }
 
     messagesContainer.appendChild(messageDiv);
-
-    // Після HTML форми прикріпляємо обробники
-    if (isHtml) {
-        setTimeout(() => attachFormHandlers(), 100);
-    }
 
     // Плавна прокрутка
     setTimeout(() => {
@@ -207,6 +205,48 @@ function addMessage(text, sender, isHtml = false) {
             behavior: 'smooth'
         });
     }, 100);
+}
+
+// НОВА ФУНКЦІЯ: Обробка Markdown-подібного синтаксису
+function processMarkdown(text) {
+    if (!text) return '';
+
+    let processed = text;
+
+    // 1. Переноси рядків: \n -> <br>
+    processed = processed.replace(/\n/g, '<br>');
+
+    // 2. Жирний текст: **текст** -> <strong>текст</strong>
+    processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // 3. Курсив: *текст* -> <em>текст</em>
+    processed = processed.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // 4. Код: `код` -> <code>код</code>
+    processed = processed.replace(/`(.*?)`/g, '<code>$1</code>');
+
+    // 5. Заголовки: ## Заголовок -> <h3>Заголовок</h3>
+    processed = processed.replace(/^## (.*$)/gm, '<h3>$1</h3>');
+
+    // 6. Списки: - пункт -> <li>пункт</li>
+    processed = processed.replace(/^- (.*$)/gm, '<li>$1</li>');
+
+    // Обгортаємо список в <ul> якщо є <li>
+    if (processed.includes('<li>')) {
+        processed = processed.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+    }
+
+    // 7. Емодзі та спеціальні символи
+    processed = processed.replace(/📋/g, '📋');
+    processed = processed.replace(/🔍/g, '🔍');
+    processed = processed.replace(/📝/g, '📝');
+    processed = processed.replace(/⏸️/g, '⏸️');
+    processed = processed.replace(/🔥/g, '🔥');
+    processed = processed.replace(/👀/g, '👀');
+    processed = processed.replace(/❌/g, '❌');
+    processed = processed.replace(/💡/g, '💡');
+
+    return processed;
 }
 
 /// ГОЛОВНА ФУНКЦІЯ - обробка повідомлень
