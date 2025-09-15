@@ -350,6 +350,10 @@ class ChatController(http.Controller):
         if command == 'cancel_task':
             return self._handle_cancel_task(task_id, comment)
 
+        # Реальна обробка pause_task
+        if command == 'pause_task':
+            return self._handle_pause_task(task_id, comment)
+
         actions = {
             'pause_task': f"⏸️ **Призупинення завдання #{task_id}**",
             'resume_task': f"▶️ **Відновлення завдання #{task_id}**",
@@ -670,16 +674,79 @@ class ChatController(http.Controller):
 
             return {
                 'reply': f"❌ **Завдання #{task_id} скасовано!**\n\n"
-                         f" Назва: {task.name}\n"
-                         f" Виконавець: {assignee_name}\n"
-                         f" Скасував: {user.name}{reason_text}\n\n"
-                         f" Статус змінено на: Cancelled\n"
-                         f"️ Додано тег: #cancelled"
+                         f"📌 Назва: {task.name}\n"
+                         f"👤 Виконавець: {assignee_name}\n"
+                         f"🙅‍♂️ Скасував: {user.name}{reason_text}\n\n"
+                         f"🎯 Статус змінено на: Cancelled\n"
+                         f"️🏷️ Додано тег: #cancelled"
             }
 
         except Exception as e:
             return {
                 'reply': f"❌ Помилка скасування завдання: {str(e)}"
+            }
+
+    def _handle_pause_task(self, task_id, reason):
+        """
+        Обробка команди /pause_task - призупинення завдання
+        """
+        try:
+            # Знаходимо завдання
+            task = request.env['project.task'].browse(task_id)
+            if not task.exists():
+                return {
+                    'reply': f"❌ Завдання #{task_id} не знайдено"
+                }
+
+            # Перевіряємо роль - тільки PM може призупиняти
+            user = request.env.user
+            role_manager = request.env['ai_chat.role_manager']
+            user_role = role_manager.get_user_role(user)
+
+            # PM може призупиняти будь-які завдання
+            if user_role == 'PM':
+                pass
+            # Dev НЕ може призупиняти завдання
+            elif user_role == 'Dev':
+                return {
+                    'reply': f"❌ У вас немає прав для призупинення завдань\n\n"
+                             f" Ваша роль: {user_role}"
+                }
+            else:
+                return {
+                    'reply': f"❌ У вас немає прав для призупинення завдань\n\n"
+                             f" Ваша роль: {user_role}"
+                }
+
+            # Перевірка наявності причини призупинення
+            if not reason or reason.strip() == "":
+                return {
+                    'reply': "❌ Необхідно вказати причину призупинення\n\n"
+                             "💡 Використовуйте: /pause_task 123 [причина]"
+                }
+
+            # Змінюємо статус на "Paused" і додаємо тег
+            task.write({
+                'ai_status': 'paused',
+                'ai_tags': (task.ai_tags or '') + ', #paused' if task.ai_tags else '#paused'
+            })
+
+            # Форматуємо відповідь
+            assignee_name = task.user_ids[0].name if task.user_ids else 'Не призначено'
+
+            return {
+                'reply': f"⏸️ **Завдання #{task_id} призупинено!**\n\n"
+                         f"📌 Назва: {task.name}\n"
+                         f"👤 Виконавець: {assignee_name}\n"
+                         f"🤚 Призупинив: {user.name}\n"
+                         f"⚠️ Причина: '{reason}'\n\n"
+                         f"🎯 Статус змінено на: Paused\n"
+                         f"️🏷️ Додано тег: #paused"
+            }
+
+        except Exception as e:
+            return {
+                'reply': f"❌ Помилка призупинення завдання: {str(e)}"
             }
 
     @http.route('/ai_chat/save_task', type='json', auth='user')
